@@ -44,3 +44,14 @@ python app.py
 
 ---
 
+## Author
+
+Jagdish Raghunath Bhoi  
+[LinkedIn](https://www.linkedin.com/in/jagdish-bhoi-a7b231278) 
+[GitHub](https://github.com/Jagdishbhoi)
+
+---
+
+## License
+
+This project is open-source and available for free use and modification.
