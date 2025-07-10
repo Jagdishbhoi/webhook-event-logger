@@ -1,7 +1,9 @@
 from flask import Flask, request, jsonify, render_template
-from pymongo import MongoClient
-import os
+from flask_pymongo import PyMongo
 from datetime import datetime
+import os
+
+
 app = Flask(__name__)
 
 
