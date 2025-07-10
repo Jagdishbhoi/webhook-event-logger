@@ -1,14 +1,14 @@
-@app.route("/")
-def home():
-    return "Webhook Event Logger is running !"
-
-
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
 from datetime import datetime
 import os
 
 app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Webhook Event Logger is running !"
+
 
 # Initial (Incorrect) Mongo URI - will correct later
 app.config["MONGO_URI"] = "mongodb://localhost:27017/webhookDB"
