@@ -1,46 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>GitHub Webhook Events</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>GitHub Events</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <h1>GitHub Webhook Event Log</h1>
-  <div id="events-container">Loading events...</div>
-
-  <script>
-    function fetchEvents() {
-      fetch('/get_events')
-        .then(response => {
-          if (!response.ok) throw new Error("Server error");
-          return response.json();
-        })
-        .then(events => {
-          const container = document.getElementById('events-container');
-          container.innerHTML = '';
-          events.forEach(event => {
-            const eventElement = document.createElement('div');
-            eventElement.className = 'event';
-            eventElement.textContent = `${event.author} ${getActionText(event)} on ${event.timestamp}`;
-            container.appendChild(eventElement);
-          });
-        })
-        .catch(error => {
-          console.error("Error:", error);
-          document.getElementById('events-container').innerHTML =
-            '<div style="color:red">Error loading events. Retrying...</div>';
-        });
-    }
-
-    function getActionText(event) {
-      if (event.action === "PUSH") return `pushed to ${event.to_branch}`;
-      if (event.action === "PULL_REQUEST") return `submitted a pull request from ${event.from_branch} to ${event.to_branch}`;
-      if (event.action === "MERGE") return `merged branch ${event.from_branch} to ${event.to_branch}`;
-      return "performed an action";
-    }
-
-    fetchEvents();
-    setInterval(fetchEvents, 15000);
-  </script>
+    <div id="events"></div>
+    <script>
+        function updateEvents() {
+            fetch('/get_events')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('events').innerHTML = data.map(e => 
+                        <div class="event">
+                            ${e.author} ${e.action.toLowerCase()} ${e.from_branch || e.branch} 
+                            ${e.to_branch ? 'to ' + e.to_branch : ''} 
+                            on ${e.timestamp}
+                        </div>
+                    ).join('');
+                });
+        }
+        updateEvents();
+        setInterval(updateEvents, 15000);
+    </script>
 </body>
 </html>
