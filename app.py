@@ -1,117 +1,67 @@
 from flask import Flask, request, jsonify, render_template
-from flask_pymongo import PyMongo
+from pymongo import MongoClient
 from datetime import datetime
 import os
 
+app = Flask(name)
 
-app = Flask(__name__)
+# MongoDB setup (Render will provide MONGO_URI)
+client = MongoClient(os.getenv("MONGO_URI", "mongodb://localhost:27017/"))
+db = client.webhook_logger
+events = db.events
 
+@app.route('/')
+def home():
+    return render_template('index.html')
 
-app.config["MONGO_URI"] = "mongodb+srv://<username>:<password>@cluster0.mongodb.net/webhookDB?retryWrites=true&w=majority"
-mongo = PyMongo(app)
-
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-@app.route("/webhook", methods=["POST"])
+@app.route('/webhook', methods=['POST'])
 def webhook():
+    event = request.headers.get('X-GitHub-Event')
     data = request.json
-    event_type = request.headers.get("X-GitHub-Event", "ping")
 
-    if not data:
-        return jsonify({"error": "No JSON data received"}), 400
+    # Push event
+    if event == 'push':
+        events.insert_one({
+            'author': data['pusher']['name'],
+            'action': 'PUSH',
+            'branch': data['ref'].split('/')[-1],
+            'timestamp': datetime.strptime(
+                data['head_commit']['timestamp'], 
+                "%Y-%m-%dT%H:%M:%SZ"
+            ).strftime("%d %B %Y - %I:%M %p UTC")
+        })
 
-    try:
-        if event_type == "push":
-            author = data["pusher"]["name"]
-            to_branch = data["ref"].split("/")[-1]
-            commit = data.get("head_commit")
-            if not commit:
-                return jsonify({"error": "No head_commit found"}), 400
-            timestamp_iso = commit["timestamp"]
-            dt_utc = datetime.strptime(timestamp_iso, "%Y-%m-%dT%H:%M:%S%z")
-            formatted_time = dt_utc.strftime("%d %B %Y - %I:%M %p UTC")
-            request_id = commit["id"]
-            message = f'{author} pushed to {to_branch} on {formatted_time}'
+    # Pull Request event
+    elif event == 'pull_request' and data['action'] == 'opened':
+        events.insert_one({
+            'author': data['sender']['login'],
+            'action': 'PULL_REQUEST',
+            'from_branch': data['pull_request']['head']['ref'],
+            'to_branch': data['pull_request']['base']['ref'],
+            'timestamp': datetime.strptime(
+                data['pull_request']['created_at'], 
+                "%Y-%m-%dT%H:%M:%SZ"
+            ).strftime("%d %B %Y - %I:%M %p UTC")
+        })
 
-            mongo.db.events.insert_one({
-                "request_id": request_id,
-                "author": author,
-                "action": "PUSH",
-                "from_branch": "",
-                "to_branch": to_branch,
-                "timestamp": formatted_time,
-                "timestamp_utc": dt_utc,
-                "message": message
-            })
-            return jsonify({"msg": "Push event logged."}), 200
+    # Merge event
+    elif event == 'pull_request' and data['action'] == 'closed' and data['pull_request']['merged']:
+        events.insert_one({
+            'author': data['sender']['login'],
+            'action': 'MERGE',
+            'from_branch': data['pull_request']['head']['ref'],
+            'to_branch': data['pull_request']['base']['ref'],
+            'timestamp': datetime.strptime(
+                data['pull_request']['merged_at'], 
+                "%Y-%m-%dT%H:%M:%SZ"
+            ).strftime("%d %B %Y - %I:%M %p UTC")
+        })
 
-        elif event_type == "pull_request":
-            action = data.get("action")
-            pr = data.get("pull_request")
-            if not pr:
-                return jsonify({"error": "No pull_request data"}), 400
+    return jsonify({'status': 'success'}), 200
 
-            from_branch = pr["head"]["ref"]
-            to_branch = pr["base"]["ref"]
-            request_id = str(pr["id"])
-
-            if action == "opened":
-                author = pr["user"]["login"]
-                timestamp_iso = pr["created_at"]
-                dt_utc = datetime.strptime(timestamp_iso, "%Y-%m-%dT%H:%M:%SZ")
-                formatted_time = dt_utc.strftime("%d %B %Y - %I:%M %p UTC")
-                message = f'{author} submitted a pull request from {from_branch} to {to_branch} on {formatted_time}'
-
-                mongo.db.events.insert_one({
-                    "request_id": request_id,
-                    "author": author,
-                    "action": "PULL_REQUEST",
-                    "from_branch": from_branch,
-                    "to_branch": to_branch,
-                    "timestamp": formatted_time,
-                    "timestamp_utc": dt_utc,
-                    "message": message
-                })
-                return jsonify({"msg": "Pull request logged."}), 200
-
-            elif action == "closed" and pr.get("merged"):
-                merged_by = pr.get("merged_by")
-                author = merged_by["login"] if merged_by else "unknown"
-                timestamp_iso = pr["merged_at"]
-                dt_utc = datetime.strptime(timestamp_iso, "%Y-%m-%dT%H:%M:%SZ")
-                formatted_time = dt_utc.strftime("%d %B %Y - %I:%M %p UTC")
-                message = f'{author} merged branch {from_branch} to {to_branch} on {formatted_time}'
-
-                mongo.db.events.insert_one({
-                    "request_id": request_id,
-                    "author": author,
-                    "action": "MERGE",
-                    "from_branch": from_branch,
-                    "to_branch": to_branch,
-                    "timestamp": formatted_time,
-                    "timestamp_utc": dt_utc,
-                    "message": message
-                })
-                return jsonify({"msg": "Merge event logged."}), 200
-
-        return jsonify({"msg": "Event type not handled"}), 400
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/get_events", methods=["GET"])
+@app.route('/get_events')
 def get_events():
-    events = mongo.db.events.find().sort("timestamp_utc", -1)
-    output = [{
-        "author": event["author"],
-        "action": event["action"],
-        "from_branch": event.get("from_branch", ""),
-        "to_branch": event.get("to_branch", ""),
-        "timestamp": event["timestamp"]
-    } for event in events]
-    return jsonify(output)
+    return jsonify(list(events.find().sort('timestamp', -1).limit(10)))
 
-if __name__ == "__main__":
-    app.run(debug=True)
+if name == 'main':
+    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
