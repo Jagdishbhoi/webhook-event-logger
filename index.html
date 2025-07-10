@@ -1,28 +1,46 @@
-
 <!DOCTYPE html>
 <html>
 <head>
-    <title>GitHub Webhook Events</title>
-    <script>
-        function fetchEvents() {
-            fetch('/events')
-                .then(response => response.json())
-                .then(data => {
-                    let container = document.getElementById("log");
-                    container.innerHTML = "";
-                    data.forEach(item => {
-                        let p = document.createElement("p");
-                        p.textContent = item.message;
-                        container.appendChild(p);
-                    });
-                });
-        }
-        setInterval(fetchEvents, 15000);
-        window.onload = fetchEvents;
-    </script>
+  <title>GitHub Webhook Events</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h2>Webhook Event Logs</h2>
-    <div id="log"></div>
+  <h1>GitHub Webhook Event Log</h1>
+  <div id="events-container">Loading events...</div>
+
+  <script>
+    function fetchEvents() {
+      fetch('/get_events')
+        .then(response => {
+          if (!response.ok) throw new Error("Server error");
+          return response.json();
+        })
+        .then(events => {
+          const container = document.getElementById('events-container');
+          container.innerHTML = '';
+          events.forEach(event => {
+            const eventElement = document.createElement('div');
+            eventElement.className = 'event';
+            eventElement.textContent = `${event.author} ${getActionText(event)} on ${event.timestamp}`;
+            container.appendChild(eventElement);
+          });
+        })
+        .catch(error => {
+          console.error("Error:", error);
+          document.getElementById('events-container').innerHTML =
+            '<div style="color:red">Error loading events. Retrying...</div>';
+        });
+    }
+
+    function getActionText(event) {
+      if (event.action === "PUSH") return `pushed to ${event.to_branch}`;
+      if (event.action === "PULL_REQUEST") return `submitted a pull request from ${event.from_branch} to ${event.to_branch}`;
+      if (event.action === "MERGE") return `merged branch ${event.from_branch} to ${event.to_branch}`;
+      return "performed an action";
+    }
+
+    fetchEvents();
+    setInterval(fetchEvents, 15000);
+  </script>
 </body>
 </html>
