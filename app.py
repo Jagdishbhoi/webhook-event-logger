@@ -1,17 +1,17 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_pymongo import PyMongo
 from datetime import datetime
 import os
 
 app = Flask(__name__)
 
-# Use environment variable for MongoDB URI in production!
-app.config["MONGO_URI"] = "mongodb+srv://<Jagdish>:<j@gdishbh0i>@cluster0.mongodb.net/webhookDB"
+# MongoDB URI - Replace with your real credentials
+app.config["MONGO_URI"] = "mongodb+srv://<username>:<password>@cluster0.mongodb.net/webhookDB"
 mongo = PyMongo(app)
 
 @app.route("/")
-def home():
-    return "Webhook Event Logger is running!"
+def index():
+    return render_template("index.html")
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -27,7 +27,7 @@ def webhook():
             to_branch = data["ref"].split("/")[-1]
             commit = data.get("head_commit")
             if not commit:
-                return jsonify({"error": "No head_commit found in push"}), 400
+                return jsonify({"error": "No head_commit found"}), 400
             timestamp_iso = commit["timestamp"]
             dt_utc = datetime.strptime(timestamp_iso, "%Y-%m-%dT%H:%M:%S%z")
             formatted_time = dt_utc.strftime("%d %B %Y - %I:%M %p UTC")
@@ -51,6 +51,7 @@ def webhook():
             pr = data.get("pull_request")
             if not pr:
                 return jsonify({"error": "No pull_request data"}), 400
+
             from_branch = pr["head"]["ref"]
             to_branch = pr["base"]["ref"]
             request_id = str(pr["id"])
@@ -99,11 +100,16 @@ def webhook():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/events", methods=["GET"])
+@app.route("/get_events", methods=["GET"])
 def get_events():
-    # Sort by real UTC timestamp for accuracy, newest first
     events = mongo.db.events.find().sort("timestamp_utc", -1)
-    output = [{"message": event["message"]} for event in events]
+    output = [{
+        "author": event["author"],
+        "action": event["action"],
+        "from_branch": event.get("from_branch", ""),
+        "to_branch": event.get("to_branch", ""),
+        "timestamp": event["timestamp"]
+    } for event in events]
     return jsonify(output)
 
 if __name__ == "__main__":
