@@ -6,7 +6,7 @@ import os
 app = Flask(__name__)
 
 # Use environment variable for MongoDB URI in production!
-app.config["MONGO_URI"] = "mongodb+srv://<username>:<password>@cluster0.mongodb.net/webhookDB"
+app.config["MONGO_URI"] = "mongodb+srv://<Jagdish>:<j@gdishbh0i>@cluster0.mongodb.net/webhookDB"
 mongo = PyMongo(app)
 
 @app.route("/")
