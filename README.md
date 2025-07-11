@@ -47,8 +47,7 @@ app.config["MONGO_URI"] = "mongodb://localhost:27017/webhookDB"
 
 with your MongoDB Atlas URI, for example:
 
-app.config["MONGO_URI"] = "mongodb+srv://jagdishbhoi251:<password>@cluster0.gnbiuxs.mongodb.net/webhookDB?retryWrites=true&w=majority"
-
+app.config["MONGO_URI"] = "mongodb+srv://<username>:<password>@cluster0.mongodb.net/webhookDB"
 
 4. Run the Flask application:
 
