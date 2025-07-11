@@ -7,7 +7,7 @@ def webhook():
         return jsonify({"error": "No JSON data received"}), 400
 
     try:
-        # ✅ PUSH EVENT
+        # PUSH EVENT
         if event_type == "push":
             pusher = data.get("pusher")
             head_commit = data.get("head_commit")
@@ -34,7 +34,7 @@ def webhook():
 
             return jsonify({"msg": "Push event logged"}), 200
 
-        # ✅ PULL REQUEST EVENT
+        # PULL REQUEST EVENT
         elif event_type == "pull_request":
             action = data.get("action")
             pr = data.get("pull_request")
@@ -91,3 +91,6 @@ def webhook():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
         
+if __name== '__main__':
+port = int(os.environ.get("PORT", 5000))
+app.run(host="0.0.0.0",port=port)
