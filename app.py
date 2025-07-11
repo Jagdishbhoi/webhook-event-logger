@@ -11,7 +11,7 @@ def home():
 
 
 # Initial (Incorrect) Mongo URI - will correct later
-app.config["MONGO_URI"] = "mongodb://localhost:27017/webhookDB"
+app.config["MONGO_URI"] = "mongodb+srv://jagdishbhoi251:<DqqaYWmDLT9nX2S4>@cluster0.gnbiuxs.mongodb.net/webhookDB?retryWrites=true&w=majority"
 mongo = PyMongo(app)
 
 @app.route('/webhook', methods=['POST'])
