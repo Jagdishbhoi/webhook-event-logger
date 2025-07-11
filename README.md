@@ -73,8 +73,8 @@ GET /events Returns all stored event logs
 👤 Author
 
 Jagdish Raghunath Bhoi
-🔗 LinkedIn • GitHub
 
+[Github](https://github.com/Jagdishbhoi)
 
 ---
 
